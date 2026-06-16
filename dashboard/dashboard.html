@@ -139,7 +139,8 @@ tr:hover td{background:rgba(59,130,246,.03)}
 
 <!-- Controls -->
 <div class="controls">
-  <button class="btn btn-primary" id="startBtn" onclick="startBot()">▶&ensp;Start Bot</button>
+  <button class="btn btn-primary" id="startBtn" onclick="startBot()">▶&ensp;Start Continuous</button>
+  <button class="btn btn-danger" id="stopBtn" onclick="stopBot()" style="display:none">⏹&ensp;Stop</button>
   <button class="btn btn-secondary" onclick="refreshAll()">↻&ensp;Refresh</button>
   <button class="btn btn-danger" onclick="resetBot()">⟳&ensp;Reset</button>
   <a class="btn btn-secondary" href="https://github.com/p4b0rge5/polymarket-bot" target="_blank" style="text-decoration:none">⬥&ensp;GitHub</a>
@@ -272,6 +273,10 @@ async function startBot(){
   if(!pollTimer)pollTimer=setInterval(refreshAll,2000);
 }
 
+async function stopBot(){
+  try{await fetch('api/stop',{method:'POST'})}catch(e){console.error(e)}
+}
+
 async function resetBot(){
   if(!confirm('Reset all data?'))return;
   try{await fetch('api/reset',{method:'POST'})}catch(e){}
@@ -303,7 +308,7 @@ function updateUI(st,tr,mt,lg,sg,ct){
   const cbadge=document.getElementById('cycleBadge');
   const cnum=document.getElementById('cycleNum');
   dot.className='status-dot '+(st.phase==='done'?'done':st.phase!=='idle'?'live':'idle');
-  stxt.textContent=st.phase==='idle'?'Idle':st.phase==='done'?'Complete':st.phase.toUpperCase()+'...';
+  stxt.textContent=st.phase==='idle'?'Idle':st.phase==='done'?'Complete':st.phase==='stopped'?'Stopped':st.phase==='continuous'?'Continuous':st.phase.toUpperCase()+'...';
   if(st.current_cycle>0){cbadge.style.display='inline-flex';cnum.textContent=st.current_cycle}
   else cbadge.style.display='none';
 
@@ -337,9 +342,14 @@ function updateUI(st,tr,mt,lg,sg,ct){
 
   // Button state
   const btn=document.getElementById('startBtn');
-  if(st.phase==='done'){btn.disabled=false;btn.textContent='▶&ensp;Run Again'}
-  else if(st.phase!=='idle'){btn.disabled=true;btn.textContent='⏳ Running...'}
-  else{btn.disabled=false;btn.textContent='▶&ensp;Start Bot'}
+  const stop=document.getElementById('stopBtn');
+  if(st.phase==='done'||st.phase==='stopped'){
+    btn.disabled=false;btn.textContent='▶&ensp;Start Continuous';stop.style.display='none'
+  }
+  else if(st.phase!=='idle'){
+    btn.disabled=true;btn.textContent='⏳ Running...';stop.style.display='inline-flex'
+  }
+  else{btn.disabled=false;btn.textContent='▶&ensp;Start Continuous';stop.style.display='none'}
 
   // P&L history → add point
   if(st.pnl_history){
@@ -464,8 +474,9 @@ function drawPnlChart(points){
 
   // X labels
   ctx.fillStyle='var(--text-muted)';ctx.font='10px system-ui';ctx.textAlign='center';
+  const step=Math.max(1,Math.floor(pts.length/10));
   pts.forEach((p,i)=>{
-    if(points.length<=6||i===0||i===points.length-1||points.length<=12&&i%Math.ceil(points.length/6)===0)
+    if(i%step===0||i===pts.length-1)
       ctx.fillText('C'+points[i].x,p.x,H-8);
   });
 
