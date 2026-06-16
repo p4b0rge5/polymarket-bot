@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polymarket Bot Dashboard</title>
+<style>
+:root {
+  --bg: #0a0e17; --surface: #111827; --surface2: #1a2235; --border: #1e2d4a;
+  --text: #e2e8f0; --text-dim: #8892a8; --accent: #3b82f6; --green: #10b981;
+  --red: #ef4444; --yellow: #f59e0b; --purple: #8b5cf6; --cyan: #06b6d4;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* Header */
+.header { background:var(--surface); border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:20px; font-weight:700; background:linear-gradient(135deg,var(--cyan),var(--accent)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.header .status { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim); }
+.header .dot { width:8px; height:8px; border-radius:50%; animation:pulse 2s infinite; }
+.dot.live { background:var(--green); box-shadow:0 0 8px var(--green); }
+.dot.idle { background:var(--yellow); }
+.dot.done { background:var(--text-dim); animation:none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Grid */
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; padding:20px 24px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; transition:border-color .2s; }
+.card:hover { border-color:var(--accent); }
+.card .label { font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-dim); margin-bottom:6px; }
+.card .value { font-size:32px; font-weight:800; }
+.card .sub { font-size:12px; color:var(--text-dim); margin-top:4px; }
+.value.green { color:var(--green); }
+.value.red { color:var(--red); }
+.value.cyan { color:var(--cyan); }
+.value.purple { color:var(--purple); }
+
+/* PnL sparkline */
+.pnltrend { height:4px; border-radius:2px; margin-top:8px; background:var(--surface2); overflow:hidden; }
+.pnltrend .bar { height:100%; border-radius:2px; transition:width .5s; }
+
+/* Controls */
+.controls { display:flex; gap:12px; padding:0 24px 16px; }
+.btn { padding:10px 24px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#2563eb; transform:translateY(-1px); }
+.btn-primary:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+.btn-secondary { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+
+/* Tabs */
+.tabs { display:flex; gap:4px; padding:0 24px; border-bottom:1px solid var(--border); }
+.tab { padding:10px 16px; font-size:13px; font-weight:500; color:var(--text-dim); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* Tables */
+.table-wrap { padding:16px 24px; overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; padding:10px 12px; color:var(--text-dim); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+td { padding:10px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
+tr:hover td { background:rgba(59,130,246,.05); }
+.badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+.badge-green { background:rgba(16,185,129,.15); color:var(--green); }
+.badge-red { background:rgba(239,68,68,.15); color:var(--red); }
+.badge-blue { background:rgba(59,130,246,.15); color:var(--accent); }
+.badge-yellow { background:rgba(245,158,11,.15); color:var(--yellow); }
+.badge-purple { background:rgba(139,92,246,.15); color:var(--purple); }
+.badge-cyan { background:rgba(6,182,212,.15); color:var(--cyan); }
+
+/* Log */
+.log-area { padding:16px 24px; max-height:200px; overflow-y:auto; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.8; color:var(--text-dim); }
+.log-area .log-entry::before { content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); margin-right:8px; vertical-align:middle; }
+
+/* Category pills */
+.pill-row { display:flex; flex-wrap:wrap; gap:6px; padding:12px 0; }
+.pill { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:500; border:1px solid var(--border); }
+
+/* Chart bars */
+.bar-chart { display:flex; align-items:flex-end; gap:4px; height:80px; margin-top:8px; }
+.bar-chart .bar { flex:1; border-radius:3px 3px 0 0; min-width:8px; transition:height .5s; position:relative; }
+.bar-chart .bar:hover::after { content:attr(data-label); position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:var(--surface2); padding:2px 6px; border-radius:4px; font-size:10px; white-space:nowrap; }
+
+/* Section */
+.section { display:none; }
+.section.active { display:block; }
+
+/* Responsive */
+@media(max-width:768px) {
+  .grid { grid-template-columns:repeat(2,1fr); padding:12px; }
+  .card .value { font-size:24px; }
+  .header h1 { font-size:16px; }
+  .table-wrap { padding:12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📈 Polymarket Trading Bot</h1>
+  <div class="status">
+    <div class="dot idle" id="statusDot"></div>
+    <span id="statusText">Idle</span>
+    <span style="margin-left:12px">Cycle: <strong id="cycleDisplay">—</strong></span>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-primary" id="startBtn" onclick="startBot()">▶ Start Bot</button>
+  <button class="btn btn-secondary" onclick="refreshAll()">↻ Refresh</button>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid" id="kpiCards">
+  <div class="card">
+    <div class="label">Portfolio Balance</div>
+    <div class="value cyan" id="kpiBalance">$10,000</div>
+    <div class="sub" id="kpiBalanceSub">Initial: $10,000</div>
+  </div>
+  <div class="card">
+    <div class="label">Total P&L</div>
+    <div class="value green" id="kpiPnl">$0.00</div>
+    <div class="pnltrend"><div class="bar" id="pnlBar" style="width:0%;background:var(--green)"></div></div>
+  </div>
+  <div class="card">
+    <div class="label">Total Trades</div>
+    <div class="value purple" id="kpiTrades">0</div>
+    <div class="sub"><span id="kpiOpen">0</span> open · <span id="kpiClosed">0</span> closed</div>
+  </div>
+  <div class="card">
+    <div class="label">Win Rate</div>
+    <div class="value green" id="kpiWinRate">—</div>
+    <div class="sub"><span id="kpiWins">0</span>W / <span id="kpiLosses">0</span>L</div>
+  </div>
+  <div class="card">
+    <div class="label">Markets Discovered</div>
+    <div class="value cyan" id="kpiMarkets">0</div>
+    <div class="pill-row" id="catPills"></div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('trades')">📋 Trades</div>
+  <div class="tab" onclick="switchTab('closed')">✅ Closed Trades</div>
+  <div class="tab" onclick="switchTab('markets')">🌍 Markets</div>
+  <div class="tab" onclick="switchTab('strategies')">📊 Strategies</div>
+  <div class="tab" onclick="switchTab('logs')">📜 Logs</div>
+</div>
+
+<!-- Trades Tab -->
+<div class="section active" id="tab-trades">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Strategy</th><th>Side</th><th>Price</th><th>Size</th><th>Strength</th><th>Category</th><th>Market</th><th>Reasoning</th></tr></thead>
+      <tbody id="tradesBody"><tr><td colspan="9" style="text-align:center;color:var(--text-dim)">No trades yet. Press Start.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Closed Trades Tab -->
+<div class="section" id="tab-closed">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Side</th><th>Entry</th><th>Resolution</th><th>Size</th><th>P&L</th><th>Reason</th><th>Market</th></tr></thead>
+      <tbody id="closedBody"><tr><td colspan="7" style="text-align:center;color:var(--text-dim)">No closed trades yet.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Markets Tab -->
+<div class="section" id="tab-markets">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Question</th><th>Category</th><th>Yes%</th><th>Vol 24h</th><th>Liquidity</th><th>End</th></tr></thead>
+      <tbody id="marketsBody"><tr><td colspan="7" style="text-align:center;color:var(--text-dim)">Loading markets...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Strategies Tab -->
+<div class="section" id="tab-strategies">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Strategy</th><th>Trades</th><th>Wins</th><th>Win Rate</th><th>Total P&L</th><th>Performance</th></tr></thead>
+      <tbody id="stratBody"><tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No strategy data yet.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Logs Tab -->
+<div class="section" id="tab-logs">
+  <div class="log-area" id="logArea">
+    <div class="log-entry">Waiting for bot to start...</div>
+  </div>
+</div>
+
+<script>
+let pollInterval = null;
+
+// ── Tabs ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Bot Control ──
+async function startBot() {
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Starting...';
+  try {
+    await fetch('/api/start', {method:'POST'});
+  } catch(e) { console.error(e); }
+  pollInterval = setInterval(refreshAll, 2000);
+}
+
+// ── Refresh ──
+async function refreshAll() {
+  try {
+    const [stateData, tradesData, marketsData, logsData, stratData] = await Promise.all([
+      fetch('/api/state').then(r=>r.json()),
+      fetch('/api/trades').then(r=>r.json()),
+      fetch('/api/markets').then(r=>r.json()),
+      fetch('/api/logs').then(r=>r.json()),
+      fetch('/api/strategies').then(r=>r.json()),
+    ]);
+    updateUI(stateData, tradesData, marketsData, logsData, stratData);
+  } catch(e) { console.error('Refresh error:', e); }
+}
+
+function updateUI(state, trades, markets, logs, strategies) {
+  const p = state.portfolio;
+
+  // Status
+  const dot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const cycleDisplay = document.getElementById('cycleDisplay');
+  dot.className = 'dot ' + (state.phase === 'done' ? 'done' : state.phase !== 'idle' ? 'live' : 'idle');
+  statusText.textContent = state.phase === 'idle' ? 'Idle' : state.phase === 'done' ? 'Complete' : state.phase.toUpperCase() + '...';
+  cycleDisplay.textContent = state.current_cycle ? state.current_cycle + '/5' : '—';
+
+  // KPIs
+  document.getElementById('kpiBalance').textContent = '$' + p.balance.toLocaleString('en-US', {minimumFractionDigits:2});
+  const pnl = p.total_pnl;
+  const pnlEl = document.getElementById('kpiPnl');
+  pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toLocaleString('en-US', {minimumFractionDigits:2});
+  pnlEl.className = 'value ' + (pnl >= 0 ? 'green' : 'red');
+
+  document.getElementById('kpiTrades').textContent = p.total_trades;
+  document.getElementById('kpiOpen').textContent = p.open_positions;
+  document.getElementById('kpiClosed').textContent = p.closed_trades;
+  document.getElementById('kpiWins').textContent = p.wins;
+  document.getElementById('kpiLosses').textContent = p.losses;
+  document.getElementById('kpiWinRate').textContent = p.win_rate ? p.win_rate + '%' : '—';
+
+  document.getElementById('kpiMarkets').textContent = state.markets.length;
+
+  // Category pills
+  const pills = document.getElementById('catPills');
+  pills.innerHTML = '';
+  const colors = {'Politics':'blue','Sports':'green','Crypto':'purple','Pop Culture':'cyan','Legal':'yellow','Geopolitics':'red','Business':'cyan','Science':'purple','Other':'blue'};
+  for (const [cat, count] of Object.entries(state.category_counts || {})) {
+    const pill = document.createElement('span');
+    pill.className = 'pill badge-' + (colors[cat]||'blue');
+    pill.textContent = cat + ' ('+count+')';
+    pills.appendChild(pill);
+  }
+
+  // Trades
+  const tradesBody = document.getElementById('tradesBody');
+  if (trades.open && trades.open.length) {
+    tradesBody.innerHTML = trades.open.map(t => {
+      const catColor = colors[t.category] || 'blue';
+      return `<tr>
+        <td style="font-family:monospace;color:var(--text-dim)">${t.trade_id.slice(0,8)}</td>
+        <td><span class="badge badge-${catColor}">${t.strategy}</span></td>
+        <td>${t.side}</td>
+        <td>$${t.price.toFixed(3)}</td>
+        <td>$${t.size.toLocaleString()}</td>
+        <td>${(t.signal_strength*100).toFixed(1)}%</td>
+        <td><span class="badge badge-${catColor}">${t.category}</span></td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${t.market_question}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;color:var(--text-dim)">${t.reasoning}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Closed trades
+  const closedBody = document.getElementById('closedBody');
+  if (trades.closed && trades.closed.length) {
+    closedBody.innerHTML = trades.closed.map(t => {
+      const pnlClass = t.pnl >= 0 ? 'green' : 'red';
+      const pnlText = (t.pnl >= 0 ? '+' : '') + '$' + t.pnl.toLocaleString('en-US',{minimumFractionDigits:2});
+      return `<tr>
+        <td>${t.side}</td>
+        <td>$${t.price.toFixed(3)}</td>
+        <td>$${t.resolution_price.toFixed(3)}</td>
+        <td>$${t.size.toLocaleString()}</td>
+        <td class="${pnlClass}" style="font-weight:700">${pnlText}</td>
+        <td>${t.close_reason}</td>
+        <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${t.market_question}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Markets
+  const marketsBody = document.getElementById('marketsBody');
+  if (markets && markets.length) {
+    marketsBody.innerHTML = markets.slice(0, 50).map((m,i) => {
+      const catColor = colors[m.category] || 'blue';
+      return `<tr>
+        <td style="color:var(--text-dim)">${i+1}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${m.question}</td>
+        <td><span class="badge badge-${catColor}">${m.category}</span></td>
+        <td>${(m.yes_price*100).toFixed(1)}%</td>
+        <td>$${m.volume_24h.toLocaleString()}</td>
+        <td>$${Math.round(m.liquidity).toLocaleString()}</td>
+        <td>${m.end_date}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Strategies
+  const stratBody = document.getElementById('stratBody');
+  if (Object.keys(strategies).length) {
+    stratBody.innerHTML = Object.entries(strategies)
+      .sort((a,b) => b[1].pnl - a[1].pnl)
+      .map(([name, s]) => {
+        const pnlClass = s.pnl >= 0 ? 'green' : 'red';
+        const barWidth = Math.min(100, Math.abs(s.pnl) / (Math.max(...Object.values(strategies).map(x=>Math.abs(x.pnl)))||1) * 100);
+        const barColor = s.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+        return `<tr>
+          <td style="font-weight:600">${name}</td>
+          <td>${s.count}</td>
+          <td>${s.wins}</td>
+          <td>${s.win_rate}%</td>
+          <td class="${pnlClass}" style="font-weight:700">${(s.pnl>=0?'+':'')} $${s.pnl.toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+          <td><div style="height:6px;border-radius:3px;background:var(--surface2);width:100px"><div style="height:100%;width:${barWidth}%;background:${barColor};border-radius:3px"></div></div></td>
+        </tr>`;
+      }).join('');
+  }
+
+  // Logs
+  const logArea = document.getElementById('logArea');
+  if (logs && logs.length) {
+    logArea.innerHTML = logs.map(l => `<div class="log-entry"><span style="color:var(--text-dim);opacity:.5">${l.ts.slice(11,19)}</span> ${l.msg}</div>`).join('');
+    logArea.scrollTop = logArea.scrollHeight;
+  }
+
+  // Stop button state
+  const btn = document.getElementById('startBtn');
+  if (state.phase === 'done') {
+    btn.disabled = false;
+    btn.textContent = '▶ Run Again';
+  } else if (state.phase !== 'idle') {
+    btn.disabled = true;
+    btn.textContent = '⏳ Running...';
+  }
+}
+
+// Auto-refresh on load
+refreshAll();
+setInterval(refreshAll, 5000);
+</script>
+
+</body>
+</html>
