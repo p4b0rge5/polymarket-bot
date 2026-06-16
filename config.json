@@ -1,0 +1,25 @@
+{
+  "api_base": "https://gamma-api.polymarket.com",
+  "simulation": {
+    "portfolio_size": 10000,
+    "min_trade_size": 10,
+    "max_trade_size": 500,
+    "trades_per_run": 15,
+    "risk_per_trade_pct": 5,
+    "stop_loss_pct": 15,
+    "take_profit_pct": 25
+  },
+  "strategies": [
+    "mean_reversion",
+    "momentum",
+    "value_bet",
+    "arbitrage",
+    "fade_extremes"
+  ],
+  "filters": {
+    "min_volume_24h": 100,
+    "min_liquidity": 1000,
+    "active_only": true,
+    "ending_within_days": 365
+  }
+}
