@@ -210,7 +210,7 @@ async function startBot() {
   btn.disabled = true;
   btn.textContent = '⏳ Starting...';
   try {
-    await fetch('/api/start', {method:'POST'});
+    await fetch('api/start', {method:'POST'});
   } catch(e) { console.error(e); }
   pollInterval = setInterval(refreshAll, 2000);
 }
@@ -219,11 +219,11 @@ async function startBot() {
 async function refreshAll() {
   try {
     const [stateData, tradesData, marketsData, logsData, stratData] = await Promise.all([
-      fetch('/api/state').then(r=>r.json()),
-      fetch('/api/trades').then(r=>r.json()),
-      fetch('/api/markets').then(r=>r.json()),
-      fetch('/api/logs').then(r=>r.json()),
-      fetch('/api/strategies').then(r=>r.json()),
+      fetch('api/state').then(r=>r.json()),
+      fetch('api/trades').then(r=>r.json()),
+      fetch('api/markets').then(r=>r.json()),
+      fetch('api/logs').then(r=>r.json()),
+      fetch('api/strategies').then(r=>r.json()),
     ]);
     updateUI(stateData, tradesData, marketsData, logsData, stratData);
   } catch(e) { console.error('Refresh error:', e); }

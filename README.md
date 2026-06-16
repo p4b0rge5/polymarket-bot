@@ -23,6 +23,7 @@ pip install requests
 
 ## Usage
 
+### CLI Mode
 ```bash
 # Run with defaults ($10,000 portfolio, 15 trades, 3 cycles)
 python3 polymarket_bot.py
@@ -30,6 +31,25 @@ python3 polymarket_bot.py
 # Customize by editing config.json
 python3 polymarket_bot.py
 ```
+
+### 🌐 Live Dashboard
+```bash
+cd dashboard
+pip install flask
+python3 server.py
+```
+
+Then open **http://localhost:8081** in your browser.
+
+**Public instance:** https://slide-coffee-satisfy-ring.2n6.me/dashboard/
+
+The dashboard provides:
+- **Real-time KPI cards** — balance, P&L, win rate, open/closed positions
+- **Live trade feed** — all open and closed trades with full details
+- **Market browser** — all discovered markets with prices, categories, volumes
+- **Strategy breakdown** — performance by strategy with visual bars
+- **Activity log** — timestamped event stream
+- **▶ Start Bot** button to run a fresh simulation from the browser
 
 ## Configuration (`config.json`)
 
