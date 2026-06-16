@@ -48,6 +48,8 @@ state = {
     "category_stats": {},
     "market_updates": {},
     "logs": [],
+    "pnl_history": [],       # [{cycle, balance, pnl}] per cycle
+    "config": {},            # current config for the editor
 }
 
 
@@ -131,6 +133,16 @@ def run_bot():
         # Update portfolio state
         s = bot.portfolio.summary()
         state["portfolio"] = s
+
+        # Track P&L history for chart
+        state["pnl_history"].append({
+            "cycle": cycle,
+            "balance": s["balance"],
+            "pnl": s["total_pnl"],
+            "closed_trades": s["closed_trades"],
+            "wins": s["wins"],
+            "losses": s["losses"],
+        })
 
         state["closed_trades"] = []
         for t in bot.portfolio.closed_trades:
@@ -237,6 +249,44 @@ def api_strategies():
 @app.route("/api/categories")
 def api_categories():
     return jsonify(state["category_stats"])
+
+
+@app.route("/api/config")
+def api_config():
+    return jsonify(load_config(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config.json")))
+
+
+@app.route("/api/config", methods=["POST"])
+def api_config_update():
+    from flask import request as r
+    new_config = r.json
+    cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config.json")
+    with open(cfg_path, "w") as f:
+        json.dump(new_config, f, indent=2)
+    state["config"] = new_config
+    return jsonify({"status": "updated"})
+
+
+@app.route("/api/reset", methods=["POST"])
+def api_reset():
+    if state["running"]:
+        return jsonify({"error": "Cannot reset while bot is running"}), 409
+    state["running"] = False
+    state["started_at"] = None
+    state["last_cycle"] = None
+    state["current_cycle"] = 0
+    state["phase"] = "idle"
+    state["markets"] = []
+    state["category_counts"] = {}
+    state["trades"] = []
+    state["closed_trades"] = []
+    state["portfolio"] = {"initial_balance": 10000, "balance": 10000, "total_pnl": 0, "total_trades": 0, "open_positions": 0, "closed_trades": 0, "wins": 0, "losses": 0, "win_rate": 0}
+    state["strategy_stats"] = {}
+    state["category_stats"] = {}
+    state["market_updates"] = {}
+    state["logs"] = []
+    state["pnl_history"] = []
+    return jsonify({"status": "reset"})
 
 
 # ── SSE Stream ──────────────────────────────────────────────────────────────
